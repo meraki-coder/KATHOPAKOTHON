@@ -66,12 +66,14 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState<VoiceProfile>(VOICE_PROFILES[0]);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
+  const [speed, setSpeed] = useState(0.9);
   const [pitch, setPitch] = useState<'low' | 'medium' | 'high'>('medium');
   const [intensity, setIntensity] = useState(82);
   const [hasBackgroundMusic, setHasBackgroundMusic] = useState(false);
   const [customInstructions, setCustomInstructions] = useState('');
   const [variation, setVariation] = useState('calm');
   const [ambiance, setAmbiance] = useState('none');
+  const [sfxList, setSfxList] = useState<{id: string, name: string, url: string}[]>([]);
   const [reverb, setReverb] = useState(0);
   const [echo, setEcho] = useState(0);
   const [showModulation, setShowModulation] = useState(false);
@@ -142,7 +144,7 @@ export default function App() {
     }
 
     try {
-      const audio = await generateStoryAudio(text, selectedVoice, 0.9, pitch, intensity, customInstructions, hasBackgroundMusic, variation, ambiance);
+      const audio = await generateStoryAudio(text, selectedVoice, speed, pitch, intensity, customInstructions, hasBackgroundMusic, variation, ambiance);
       if (audio) {
         // Detect if it is already a WAV
         const binary = window.atob(audio);
@@ -276,6 +278,18 @@ export default function App() {
     }
   };
 
+  const playSfx = (url: string) => {
+    const audio = new Audio(url);
+    audio.play().catch(console.error);
+  };
+
+  const handleSfxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setSfxList([...sfxList, { id: Date.now().toString(), name: file.name, url }]);
+  };
+
   return (
     <div className="min-h-screen bg-[#0A0502] text-[#E0D8D0] font-sans flex flex-col overflow-hidden relative">
       {/* Background Atmosphere */}
@@ -397,12 +411,17 @@ export default function App() {
                     <div>
                       <div className="flex justify-between text-[11px] mb-2">
                         <span className="opacity-70 uppercase tracking-widest">Speed</span>
-                        <span className="text-[#FF4E00]">0.9x</span>
+                        <span className="text-[#FF4E00]">{speed}x</span>
                       </div>
-                      <div className="h-[2px] bg-white/10 relative cursor-pointer group">
-                        <div className="absolute left-0 top-0 h-full w-[45%] bg-[#FF4E00]"></div>
-                        <div className="absolute left-[45%] top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg scale-0 group-hover:scale-100 transition-transform"></div>
-                      </div>
+                      <input 
+                        type="range"
+                        min="0.5"
+                        max="1.5"
+                        step="0.1"
+                        value={speed}
+                        onChange={(e) => setSpeed(parseFloat(e.target.value))}
+                        className="w-full h-1 bg-white/10 appearance-none cursor-pointer accent-[#FF4E00] rounded-full"
+                      />
                     </div>
 
                     <div>
@@ -483,6 +502,47 @@ export default function App() {
                               }`}
                             >
                               <a.icon className="w-4 h-4" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center text-[11px] opacity-70 uppercase tracking-widest">
+                          <span>Sound Pad</span>
+                          <label className="cursor-pointer text-[#FF4E00] hover:opacity-80 transition-opacity">
+                            + Add Custom
+                            <input type="file" accept="audio/*" className="hidden" onChange={handleSfxUpload} />
+                          </label>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {[
+                            { id: 'birds', name: 'Birdsong', emoji: '🐦' },
+                            { id: 'crickets', name: 'Crickets', emoji: '🦗' },
+                            { id: 'bells', name: 'Temple Bells', emoji: '🔔' }
+                          ].map(s => (
+                            <button 
+                              key={s.id}
+                              onClick={() => {
+                                // These are representative. In a real app we'd have actual URLs.
+                                // For now we trigger them via Gemini if they are in instructions, 
+                                // but as a "Pad" it should play locally.
+                                console.log(`Triggering ${s.name}`);
+                              }}
+                              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[10px] flex items-center gap-2 hover:bg-white/10 transition-colors"
+                            >
+                              <span>{s.emoji}</span>
+                              <span className="opacity-60">{s.name}</span>
+                            </button>
+                          ))}
+                          {sfxList.map(s => (
+                            <button 
+                              key={s.id}
+                              onClick={() => playSfx(s.url)}
+                              className="px-3 py-2 rounded-xl bg-[#FF4E00]/10 border border-[#FF4E00]/20 text-[10px] flex items-center gap-2 hover:bg-[#FF4E00]/20 transition-colors"
+                            >
+                              <Volume2 className="w-3 h-3 text-[#FF4E00]" />
+                              <span className="text-[#FF4E00] line-clamp-1 max-w-[80px]">{s.name}</span>
                             </button>
                           ))}
                         </div>
